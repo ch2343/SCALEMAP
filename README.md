@@ -454,6 +454,3 @@ DATASET_CONFIGS["my_dataset_ATAC"] = {
 
 If you use SCALEMAP or this repository, please cite the corresponding method paper or repository.
 
-## License
-
-Please add a license file before public release if needed.
