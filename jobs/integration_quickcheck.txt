@@ -1,0 +1,6 @@
+python -u script_1_integration.py --dataset bmcite --modalities RNA_ADT --method scalemap --version quickcheck_v1 --output_root ./results
+python -u script_1_integration.py --dataset D22 --modalities RNA_ADT --method scalemap --version quickcheck_v1 --output_root ./results
+python -u script_1_integration.py --dataset D23 --modalities RNA_ADT --method scalemap --version quickcheck_v1 --output_root ./results
+python -u script_1_integration.py --dataset GSE164378 --modalities RNA_ADT --method scalemap --version quickcheck_v1 --output_root ./results
+python -u script_1_integration.py --dataset COMBAT_subset_005 --modalities RNA_ADT --method scalemap --version quickcheck_v1 --output_root ./results
+python -u script_1_integration.py --dataset tea_seq --modalities RNA_ADT --method scalemap --version quickcheck_v1 --output_root ./results
