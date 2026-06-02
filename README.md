@@ -1,6 +1,8 @@
 # SCALEMAP
 
-SCALEMAP is a multi-omics integration framework for paired single-cell datasets, including RNA–protein (RNA–ADT) and RNA–ATAC integration. SCALEMAP learns a shared latent representation by combining cross-modality reconstruction, shared-feature alignment, adversarial modality alignment, and structure-preserving regularization.
+SCALEMAP is a deep learning framework for paired single-cell multi-omics integration, including both **RNA–ADT** and **RNA–ATAC** datasets. Rather than relying on explicit cell-cell matching, SCALEMAP learns a shared latent representation through cross-modality translation and shared-feature alignment, enabling robust integration across modalities while preserving biologically meaningful structure.
+
+---
 
 ## Installation
 
@@ -18,54 +20,56 @@ conda env create -f environment.yml
 conda activate scalemap
 ```
 
-Alternatively, install dependencies with:
+Alternatively:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Some benchmark methods may require additional method-specific dependencies. For example, `bindSC` requires R packages, and `scGLUE` or `MaxFuse` may require separate installation steps.
+---
 
 ## Input Data
 
-SCALEMAP expects each modality to be stored as an AnnData `.h5ad` object.
+SCALEMAP expects each modality to be stored as an AnnData (`.h5ad`) object.
 
-For RNA–ADT integration:
+### RNA–ADT
 
 ```text
 RNA: cells × genes
 ADT: cells × proteins
 ```
 
-For RNA–ATAC integration:
+### RNA–ATAC
 
 ```text
 RNA: cells × genes
 ATAC: cells × gene activity features
 ```
 
-The two modalities should contain matched cells. Ideally, the two AnnData objects should have the same cell order or matching cell IDs in `obs_names`.
+The two modalities should correspond to the same cells and ideally share the same cell IDs.
+
+---
 
 ## Dataset Configuration
 
-Before running SCALEMAP, create your local dataset configuration file:
+Create your local dataset configuration file:
 
 ```bash
 cp configs/datasets.example.py configs/datasets.py
 ```
 
-Then edit `configs/datasets.py` to specify your own dataset paths.
+Then specify your dataset paths.
 
 Example RNA–ADT dataset:
 
 ```python
 DATASET_CONFIGS = {
-    "D22": {
-        "RNA": "/path/to/D22/adata_rna.h5ad",
-        "ADT": "/path/to/D22/adata_adt.h5ad",
+    "my_dataset": {
+        "RNA": "/path/to/RNA.h5ad",
+        "ADT": "/path/to/ADT.h5ad",
         "correspondence": "resources/protein_gene_conversion.csv",
         "modalities": ["RNA", "ADT"],
-    },
+    }
 }
 ```
 
@@ -73,294 +77,234 @@ Example RNA–ATAC dataset:
 
 ```python
 DATASET_CONFIGS = {
-    "D22_ATAC": {
-        "RNA": "/path/to/D22/adata_rna.h5ad",
-        "ATAC": "/path/to/D22/adata_atac.h5ad",
+    "my_dataset_ATAC": {
+        "RNA": "/path/to/RNA.h5ad",
+        "ATAC": "/path/to/ATAC.h5ad",
         "modalities": ["RNA", "ATAC"],
-    },
+    }
 }
 ```
 
-Large datasets are not included in this repository. Users should prepare their own `.h5ad` files and update `configs/datasets.py`.
-
-## Feature Correspondence
-
-For RNA–ADT integration, SCALEMAP uses a correspondence table between proteins and RNA genes.
-
-Included resource files:
-
-```text
-resources/protein_gene_conversion.csv
-resources/rna_protein_COMBAT.csv
-```
-
-For RNA–ATAC integration, ATAC is assumed to be represented as a gene activity matrix. Shared features are identified by matching RNA gene names with ATAC gene activity feature names.
+---
 
 ## Data Processing
 
-For RNA–ADT integration, SCALEMAP performs the following preprocessing:
+### RNA–ADT
 
-```text
-1. Load RNA and ADT AnnData objects.
-2. Load the RNA–protein correspondence table.
-3. Identify valid RNA–protein shared feature pairs.
-4. Split features into shared and unshared blocks.
-5. Normalize, log-transform, and scale the data.
-6. Select highly variable RNA features when needed.
-7. Concatenate shared features first, followed by unshared features.
-8. Cluster each modality to provide structure information for training.
-```
+For RNA–ADT integration, SCALEMAP:
 
-For RNA–ATAC integration, SCALEMAP uses a gene-activity-based pipeline:
+1. Loads RNA and ADT AnnData objects.
+2. Uses a protein–gene correspondence table.
+3. Identifies valid RNA–protein shared feature pairs.
+4. Normalizes and log-transforms both modalities.
+5. Places shared features at the beginning of the feature matrices.
+6. Performs clustering to provide structural information during training.
 
-```text
-1. Load RNA and ATAC gene activity AnnData objects.
-2. Select highly variable features for RNA and ATAC.
-3. Normalize, log-transform, and scale each modality.
-4. Identify shared features by gene-name intersection.
-5. Reorder features so shared features appear first.
-6. Cluster each modality before training.
-```
+### RNA–ATAC
 
-The number of shared features is stored during preprocessing and used by SCALEMAP to define feature-level alignment losses.
+For RNA–ATAC integration, SCALEMAP:
 
-## Quick Start: RNA–ADT Integration
+1. Selects highly variable features.
+2. Normalizes and log-transforms RNA and ATAC gene activity matrices.
+3. Identifies shared features using gene-name intersection.
+4. Reorders shared features to the front.
+5. Performs clustering before training.
 
-Run SCALEMAP on an RNA–ADT dataset:
+---
+
+## Quick Start (Command Line)
+
+### RNA–ADT Integration
 
 ```bash
 python script_1_integration.py \
-  --dataset D22 \
-  --modalities RNA_ADT \
-  --method scalemap \
-  --version test_v1 \
-  --output_root ./results
+    --dataset D22 \
+    --modalities RNA_ADT \
+    --method scalemap \
+    --version test_v1 \
+    --output_root ./results
 ```
 
-## Quick Start: RNA–ATAC Integration
-
-Run SCALEMAP on an RNA–ATAC dataset:
+### RNA–ATAC Integration
 
 ```bash
 python script_1_integration.py \
-  --dataset D22_ATAC \
-  --modalities RNA_ATAC \
-  --method scalemap \
-  --version test_atac_v1 \
-  --output_root ./results \
-  --preprocess_mode rna_atac
+    --dataset D22_ATAC \
+    --modalities RNA_ATAC \
+    --method scalemap \
+    --version test_atac_v1 \
+    --output_root ./results \
+    --preprocess_mode rna_atac
 ```
 
-## Important SCALEMAP Parameters
+---
 
-The most commonly used parameters are:
+## Python API Example
 
-```text
---dataset
-```
+SCALEMAP can also be run directly inside a Python session.
 
-Dataset name defined in `configs/datasets.py`.
-
-```text
---modalities
-```
-
-Modality pair. Use `RNA_ADT` for RNA–protein integration and `RNA_ATAC` for RNA–ATAC integration.
-
-```text
---method
-```
-
-Integration method. Use `--method scalemap` to run SCALEMAP.
-
-```text
---version
-```
-
-A user-defined run name. Output files are saved under:
-
-```text
-results/<dataset>/<method>/<version>/
-```
-
-```text
---output_root
-```
-
-Root directory for output files. Default is `./results`.
-
-```text
---seed
-```
-
-Random seed for reproducibility.
-
-```text
---hvg_top_genes
-```
-
-Number of highly variable genes or features selected during preprocessing. Default is commonly `2000`.
-
-```text
---preprocess_mode
-```
-
-Preprocessing mode. For RNA–ATAC integration, use:
-
-```bash
---preprocess_mode rna_atac
-```
-
-```text
---training_steps
-```
-
-Number of training iterations. Larger values may improve convergence but increase runtime.
-
-```text
---batch_size
-```
-
-Mini-batch size for training.
-
-```text
---n_latent
-```
-
-Dimension of the shared latent embedding.
-
-```text
---lambdaAE
-```
-
-Weight for reconstruction losses. This controls how strongly SCALEMAP preserves modality-specific feature information.
-
-```text
---lambdaMNN
-```
-
-Weight for shared-feature alignment. This controls how strongly SCALEMAP aligns the shared feature block across modalities.
-
-```text
---lambdaGAN
-```
-
-Weight for adversarial modality alignment in the latent space.
-
-```text
---lambdaNoise
-```
-
-Weight for noise-based consistency regularization.
-
-```text
---cluster_method
-```
-
-Clustering method used during preprocessing. Common choices are `leiden` and `louvain`.
-
-```text
---cluster_resolution
-```
-
-Resolution parameter for preprocessing clustering.
-
-## Example With Custom Parameters
-
-```bash
-python script_1_integration.py \
-  --dataset D22 \
-  --modalities RNA_ADT \
-  --method scalemap \
-  --version scalemap_custom_v1 \
-  --output_root ./results \
-  --seed 42 \
-  --training_steps 4000 \
-  --batch_size 250 \
-  --lambdaAE 10 \
-  --lambdaNoise 0.1 \
-  --lambdaGAN 2 \
-  --n_latent 50
-```
-
-## Output Files
-
-Each integration run creates:
-
-```text
-results/<dataset>/<method>/<version>/
-├── model_<method>_<dataset>_<modalities>_<version>.pt
-├── embedding_<method>_<dataset>_<modalities>_<version>.csv
-├── integrated_<method>_<dataset>_<modalities>_<version>.h5ad
-├── runtime_<method>_<dataset>_<modalities>_<version>.json
-└── preprocess_<method>_<dataset>_<modalities>_<version>.json
-```
-
-The integrated embedding is stored in:
+### RNA–ADT Example
 
 ```python
-adata_integrated.obsm["X_multi"]
+import scanpy as sc
+
+from utils.preprocess_scalemap import build_scalemap_inputs
+from methods.scalemap_core import run_scalemap
+
+adata_rna = sc.read_h5ad("RNA.h5ad")
+adata_adt = sc.read_h5ad("ADT.h5ad")
+
+adata1, adata2, preprocess_info = build_scalemap_inputs(
+    adata_rna=adata_rna,
+    adata_adt=adata_adt,
+    correspondence_path="resources/protein_gene_conversion.csv",
+    dataset_name="example_dataset"
+)
+
+model, adata_integrated, embedding_df, run_stats = run_scalemap(
+    adata1=adata1,
+    adata2=adata2,
+    adata_rna_raw=adata_rna,
+    adata_adt_raw=adata_adt,
+    shared_feature_num=preprocess_info["shared_feature_num"],
+    seed=42
+)
+
+adata_integrated.write("integrated_scalemap.h5ad")
+embedding_df.to_csv("embedding_scalemap.csv")
 ```
+
+### RNA–ATAC Example
+
+```python
+import scanpy as sc
+
+from utils.preprocess_scalemap_atac import build_scalemap_rna_atac_inputs
+from methods.scalemap_core import run_scalemap
+
+adata_rna = sc.read_h5ad("RNA.h5ad")
+adata_atac = sc.read_h5ad("ATAC.h5ad")
+
+adata1, adata2, preprocess_info = build_scalemap_rna_atac_inputs(
+    adata_rna=adata_rna,
+    adata_atac=adata_atac,
+    dataset_name="example_rna_atac"
+)
+
+model, adata_integrated, embedding_df, run_stats = run_scalemap(
+    adata1=adata1,
+    adata2=adata2,
+    adata_rna_raw=adata_rna,
+    adata_adt_raw=adata_atac,
+    shared_feature_num=preprocess_info["shared_feature_num"],
+    seed=42
+)
+
+adata_integrated.write("integrated_scalemap_rna_atac.h5ad")
+embedding_df.to_csv("embedding_scalemap_rna_atac.csv")
+```
+
+---
+
+## Important Parameters
+
+Most users only need to modify the following parameters.
+
+| Parameter | Description |
+|------------|------------|
+| `--dataset` | Dataset name defined in `configs/datasets.py` |
+| `--modalities` | `RNA_ADT` or `RNA_ATAC` |
+| `--method` | Integration method (`scalemap`) |
+| `--version` | Name of the current run |
+| `--output_root` | Output directory |
+| `--seed` | Random seed |
+| `--preprocess_mode` | Use `rna_atac` for RNA–ATAC integration |
+
+Example:
+
+```bash
+python script_1_integration.py \
+    --dataset D22 \
+    --modalities RNA_ADT \
+    --method scalemap \
+    --version benchmark_v1 \
+    --output_root ./results \
+    --seed 42
+```
+
+---
 
 ## Evaluation
 
-Evaluate an RNA–ADT integration result:
+Evaluate integrated embeddings:
+
+### RNA–ADT
 
 ```bash
 python script_2_evaluation.py \
-  --dataset D22 \
-  --modalities RNA_ADT \
-  --method scalemap \
-  --version test_v1 \
-  --output_root ./results \
-  --batch_key modality \
-  --celltype_key celltype \
-  --pair_modalities RNA ADT \
-  --force_shared_obs_names
+    --dataset D22 \
+    --modalities RNA_ADT \
+    --method scalemap \
+    --version benchmark_v1 \
+    --output_root ./results \
+    --batch_key modality \
+    --celltype_key celltype \
+    --pair_modalities RNA ADT
 ```
 
-Evaluate an RNA–ATAC integration result:
+### RNA–ATAC
 
 ```bash
 python script_2_evaluation.py \
-  --dataset D22_ATAC \
-  --modalities RNA_ATAC \
-  --method scalemap \
-  --version test_atac_v1 \
-  --output_root ./results \
-  --batch_key modality \
-  --celltype_key celltype \
-  --pair_modalities RNA ATAC \
-  --force_shared_obs_names
+    --dataset D22_ATAC \
+    --modalities RNA_ATAC \
+    --method scalemap \
+    --version benchmark_v1 \
+    --output_root ./results \
+    --batch_key modality \
+    --celltype_key celltype \
+    --pair_modalities RNA ATAC
 ```
 
-Evaluation metrics include biological conservation, modality mixing, label transfer accuracy, pair distance, FOSCTTM, runtime, and memory usage.
+Evaluation includes:
+
+- ASW Label
+- ASW Batch
+- ARI
+- NMI
+- kBET
+- Label Transfer Accuracy
+- FOSCTTM
+- Runtime
+- Memory Usage
+
+---
 
 ## UMAP Visualization
 
-Draw integrated UMAPs:
+Generate integrated UMAPs:
 
 ```bash
 python script_3_umap.py \
-  --dataset D22 \
-  --modalities RNA_ADT \
-  --method scalemap \
-  --version test_v1 \
-  --output_root ./results \
-  --skip_raw
+    --dataset D22 \
+    --modalities RNA_ADT \
+    --method scalemap \
+    --version benchmark_v1 \
+    --output_root ./results \
+    --skip_raw
 ```
 
-UMAP figures are saved under:
+Figures will be stored under:
 
 ```text
 results/<dataset>/<method>/<version>/umap/
 ```
 
-## Benchmarking Other Methods
+---
 
-Although this repository focuses on SCALEMAP, it also includes a benchmarking interface for several existing methods.
+## Benchmarking Additional Methods
 
-Supported method names:
+The repository also supports benchmarking several existing integration methods:
 
 ```text
 scalemap
@@ -374,83 +318,44 @@ Example:
 
 ```bash
 python script_1_integration.py \
-  --dataset D22 \
-  --modalities RNA_ADT \
-  --method scmodal \
-  --version scmodal_test_v1 \
-  --output_root ./results
+    --dataset D22 \
+    --modalities RNA_ADT \
+    --method scmodal \
+    --version scmodal_test \
+    --output_root ./results
 ```
 
-For scGLUE on RNA–ATAC data:
+---
 
-```bash
-python script_1_integration.py \
-  --dataset D22_ATAC \
-  --modalities RNA_ATAC \
-  --method scglue \
-  --version scglue_atac_test_v1 \
-  --output_root ./results \
-  --preprocess_mode rna_atac \
-  --n_pca_rna 100 \
-  --n_pca_mod2 100 \
-  --rna_prob_model NB \
-  --mod2_prob_model Normal
+## Repository Structure
+
+```text
+SCALEMAP/
+├── configs/
+├── methods/
+├── utils/
+├── resources/
+│   ├── protein_gene_conversion.csv
+│   └── rna_protein_COMBAT.csv
+├── script_1_integration.py
+├── script_2_evaluation.py
+├── script_3_umap.py
+├── environment.yml
+├── requirements.txt
+└── README.md
 ```
 
-## Combining Benchmark Metrics
-
-Combine metrics across datasets for one method:
-
-```bash
-python combine_method_metrics.py \
-  scalemap \
-  test_v1 \
-  ./results
-```
-
-For multi-seed experiments:
-
-```bash
-python combine_method_metrics_across_seeds.py \
-  scalemap \
-  benchmark_v1 \
-  ./results \
-  --seeds 10 20 42
-```
-
-This produces mean, standard deviation, and long-format metric summaries.
-
-## Custom Datasets
-
-To add a new RNA–ADT dataset:
-
-```python
-DATASET_CONFIGS["my_dataset"] = {
-    "RNA": "/path/to/RNA.h5ad",
-    "ADT": "/path/to/ADT.h5ad",
-    "correspondence": "resources/protein_gene_conversion.csv",
-    "modalities": ["RNA", "ADT"],
-}
-```
-
-To add a new RNA–ATAC dataset:
-
-```python
-DATASET_CONFIGS["my_dataset_ATAC"] = {
-    "RNA": "/path/to/RNA.h5ad",
-    "ATAC": "/path/to/ATAC.h5ad",
-    "modalities": ["RNA", "ATAC"],
-}
-```
+---
 
 ## Notes
 
-- `configs/datasets.py` is user-specific and should not contain private paths in public repositories.
-- Large files such as `.h5ad`, model checkpoints, logs, and result files are excluded from Git tracking.
-- RNA–ATAC integration assumes that ATAC has already been converted to a gene activity matrix.
-- For new RNA–ADT datasets, users should provide a valid RNA–protein correspondence table.
+- Dataset files are not included in this repository.
+- Users should provide their own `.h5ad` datasets.
+- RNA–ATAC integration assumes ATAC has been converted into a gene activity matrix.
+- Public repositories should not contain institution-specific file paths.
+
+---
 
 ## Citation
 
-If you use SCALEMAP or this repository, please cite the corresponding method paper or repository.
-
+If you use SCALEMAP in your work, please cite the corresponding manuscript.
