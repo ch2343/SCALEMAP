@@ -1,0 +1,25 @@
+name: scalemap
+channels:
+  - conda-forge
+  - bioconda
+  - pytorch
+  - defaults
+dependencies:
+  - python=3.11
+  - numpy
+  - pandas
+  - scipy
+  - scikit-learn
+  - scanpy
+  - anndata
+  - matplotlib
+  - pytorch
+  - umap-learn
+  - networkx
+  - rpy2
+  - pip
+  - pip:
+      - annoy
+      - scib
+      - scglue
+      - maxfuse

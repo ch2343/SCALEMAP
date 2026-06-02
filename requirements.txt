@@ -1,0 +1,15 @@
+numpy
+pandas
+scipy
+scikit-learn
+scanpy
+anndata
+matplotlib
+torch
+umap-learn
+annoy
+networkx
+scib
+rpy2
+scglue
+maxfuse
